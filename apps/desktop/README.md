@@ -1,4 +1,4 @@
-👉 Try the GPT: https://chatgpt.com/g/g-6a3e74bb85f481918c58bcb73bca3e78-project-cto
+🚀 Try the AI CTO (Beta): https://chatgpt.com/g/g-6a3e74bb85f481918c58bcb73bca3e78-project-cto
 # Tauri + React + Typescript
 
 This template should help get you started developing with Tauri, React and Typescript in Vite.
