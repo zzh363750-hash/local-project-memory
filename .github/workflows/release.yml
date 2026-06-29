@@ -1,4 +1,5 @@
 name: Release Project CTO DMG
+run-name: Release Project CTO ${{ github.ref_name }}
 
 on:
   push:
