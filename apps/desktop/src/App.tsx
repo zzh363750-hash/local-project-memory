@@ -37,6 +37,7 @@ import {
   formatProjectFactsForPrompt,
   type ProjectFacts,
 } from "./projectAnalyzer";
+import { ProviderFactory } from "./ai/provider/ProviderFactory";
 
 type Project = {
   id: number;
@@ -2772,7 +2773,7 @@ function App() {
       return;
     }
 
-    if (!storedApiKey) {
+    if (ProviderFactory.requiresClientApiKey() && !storedApiKey) {
       setAnswer("请先在设置中填写 API Key");
       return;
     }
@@ -3045,10 +3046,7 @@ ${answerMode === "strict" ? "Strict" : "Explain"}
 
 ${selectedAnswerRules}`;
 
-      const modelAnswer = await runTauriCommand<string>("ask_mimo", {
-        prompt,
-        apiKey: storedApiKey,
-      });
+      const modelAnswer = await ProviderFactory.create(storedApiKey).send(prompt);
 
       if (
         questionRequestSequenceRef.current !== requestSequence ||
@@ -3609,7 +3607,7 @@ ${reportContext}`;
       return;
     }
 
-    if (!storedApiKey) {
+    if (ProviderFactory.requiresClientApiKey() && !storedApiKey) {
       setAnswer("请先在设置中填写 API Key");
       return;
     }
@@ -3637,10 +3635,7 @@ ${reportContext}`;
         projectFacts,
       );
 
-      const reportText = await runTauriCommand<string>("ask_mimo", {
-        apiKey: storedApiKey,
-        prompt,
-      });
+      const reportText = await ProviderFactory.create(storedApiKey).send(prompt);
 
       const nextRecord = {
         content: reportText,
@@ -3691,7 +3686,7 @@ ${reportContext}`;
       return;
     }
 
-    if (!storedApiKey) {
+    if (ProviderFactory.requiresClientApiKey() && !storedApiKey) {
       setAnswer("请先在设置中填写 API Key");
       return;
     }
@@ -3722,10 +3717,9 @@ ${reportContext}`;
       });
 
       const prompt = buildProgressAnalysisPromptFromInput(progressInput);
-      const analysisText = await runTauriCommand<string>("ask_mimo", {
-        apiKey: storedApiKey,
+      const analysisText = await ProviderFactory.create(storedApiKey).send(
         prompt,
-      });
+      );
 
       const nextRecord = {
         content: analysisText,
@@ -3758,7 +3752,7 @@ ${reportContext}`;
       return;
     }
 
-    if (!storedApiKey) {
+    if (ProviderFactory.requiresClientApiKey() && !storedApiKey) {
       setAnswer("请先在设置中填写 API Key");
       return;
     }
@@ -3799,10 +3793,9 @@ ${reportContext}`;
       });
 
       const prompt = buildWeeklyReportPromptFromInput(weeklyInput);
-      const weeklyReportText = await runTauriCommand<string>("ask_mimo", {
-        apiKey: storedApiKey,
+      const weeklyReportText = await ProviderFactory.create(storedApiKey).send(
         prompt,
-      });
+      );
 
       const nextRecord = {
         content: weeklyReportText,
@@ -5300,9 +5293,9 @@ ${reportContext}`;
     <main className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brandIcon">L</div>
+          <div className="brandIcon">P</div>
           <div>
-            <h1>Local Project Memory</h1>
+            <h1>Project CTO</h1>
             <p>本地项目记忆助手</p>
           </div>
         </div>
@@ -6099,7 +6092,7 @@ ${reportContext}`;
                 <input
                   value={form.name}
                   onChange={(event) => updateForm("name", event.target.value)}
-                  placeholder="例如：Local Project Memory"
+                  placeholder="例如：Project CTO"
                 />
               </label>
 

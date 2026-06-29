@@ -82,7 +82,7 @@ ensure_project_list_page() {
   run_osascript_block <<'APPLESCRIPT' >/dev/null
 tell application "System Events"
   tell process "appsdesktop"
-    button 1 of group "项目列表" of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "appsdesktop"
+    button 1 of group "项目列表" of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "Project CTO"
   end tell
 end tell
 APPLESCRIPT
@@ -94,7 +94,7 @@ open_first_project() {
   run_osascript_block <<'APPLESCRIPT'
 tell application "System Events"
   tell process "appsdesktop"
-    set projectCard to button 1 of group "项目列表" of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "appsdesktop"
+    set projectCard to button 1 of group "项目列表" of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "Project CTO"
     set focused of projectCard to true
   end tell
 end tell
@@ -111,7 +111,7 @@ scan_current_project() {
   run_osascript_block <<'APPLESCRIPT'
 tell application "System Events"
   tell process "appsdesktop"
-    perform action "AXPress" of button "扫描文件" of group 2 of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "appsdesktop"
+    perform action "AXPress" of button "扫描文件" of group 2 of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "Project CTO"
   end tell
 end tell
 APPLESCRIPT
@@ -125,7 +125,7 @@ open_first_file() {
   run_osascript_block <<'APPLESCRIPT'
 tell application "System Events"
   tell process "appsdesktop"
-    perform action "AXPress" of button 1 of group 6 of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "appsdesktop"
+    perform action "AXPress" of button 1 of group 6 of group 1 of UI element 1 of scroll area 1 of group 1 of group 1 of window "Project CTO"
   end tell
 end tell
 APPLESCRIPT

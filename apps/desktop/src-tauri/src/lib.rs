@@ -313,6 +313,95 @@ fn ask_mimo(prompt: String, api_key: Option<String>) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn ask_openai(prompt: String, model: Option<String>) -> Result<String, String> {
+    ask_openai_compatible(
+        "OpenAI",
+        "https://api.openai.com/v1/chat/completions",
+        "OPENAI_API_KEY",
+        "gpt-4o-mini",
+        prompt,
+        model,
+    )
+}
+
+#[tauri::command]
+fn ask_openrouter(prompt: String, model: Option<String>) -> Result<String, String> {
+    ask_openai_compatible(
+        "OpenRouter",
+        "https://openrouter.ai/api/v1/chat/completions",
+        "OPENROUTER_API_KEY",
+        "openai/gpt-4o-mini",
+        prompt,
+        model,
+    )
+}
+
+fn ask_openai_compatible(
+    provider_name: &str,
+    api_url: &str,
+    api_key_env: &str,
+    default_model: &str,
+    prompt: String,
+    model: Option<String>,
+) -> Result<String, String> {
+    load_backend_env();
+
+    let api_key = env::var(api_key_env)
+        .map_err(|_| format!("缺少 {api_key_env}"))?;
+    let model = model
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| default_model.to_string());
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(60))
+        .connect_timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|error| format!("{provider_name} 客户端初始化失败：{error}"))?;
+    let response = client
+        .post(api_url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {api_key}"))
+        .json(&serde_json::json!({
+            "model": model,
+            "messages": [
+                { "role": "user", "content": prompt }
+            ]
+        }))
+        .send()
+        .map_err(|error| format!("{provider_name} 请求失败：{error}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("{provider_name} 请求失败：{}", response.status()));
+    }
+
+    let data: serde_json::Value = response
+        .json()
+        .map_err(|error| format!("{provider_name} 响应解析失败：{error}"))?;
+
+    parse_openai_compatible_response(provider_name, &data)
+}
+
+fn parse_openai_compatible_response(
+    provider_name: &str,
+    data: &serde_json::Value,
+) -> Result<String, String> {
+    let answer = data
+        .get("choices")
+        .and_then(|value| value.get(0))
+        .and_then(|value| value.get("message"))
+        .and_then(|value| value.get("content"))
+        .and_then(|value| value.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+
+    if answer.is_empty() {
+        Err(format!("{provider_name} 没有返回回答内容"))
+    } else {
+        Ok(answer)
+    }
+}
+
 fn normalize_mimo_api_url(raw_url: &str) -> String {
     let trimmed = raw_url.trim().trim_end_matches('/');
 
@@ -953,6 +1042,8 @@ pub fn run() {
             read_project_file,
             semantic_search_project_files,
             ask_mimo,
+            ask_openai,
+            ask_openrouter,
             store_mimo_api_key,
             migrate_mimo_api_key_to_keychain,
             get_mimo_api_key_status
@@ -963,9 +1054,39 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{read_project_file, scan_project_files, MAX_PREVIEW_FILE_SIZE};
+    use super::{
+        parse_openai_compatible_response, read_project_file, scan_project_files,
+        MAX_PREVIEW_FILE_SIZE,
+    };
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn parses_openai_compatible_assistant_content() {
+        let response = serde_json::json!({
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "  provider response  "
+                }
+            }]
+        });
+
+        assert_eq!(
+            parse_openai_compatible_response("OpenAI", &response),
+            Ok("provider response".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_openai_compatible_response_without_assistant_content() {
+        let response = serde_json::json!({ "answer": "unsupported fallback" });
+
+        assert_eq!(
+            parse_openai_compatible_response("OpenRouter", &response),
+            Err("OpenRouter 没有返回回答内容".to_string())
+        );
+    }
 
     #[test]
     fn scans_supported_files_and_ignores_common_build_dirs() {

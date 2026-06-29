@@ -1,8 +1,8 @@
-# Local Project Memory PRD
+# Project CTO PRD
 
 ## 1. 产品定位
 
-Local Project Memory 是一个面向开发者和知识工作者的本地项目记忆助手。
+Project CTO 是一个面向开发者和知识工作者的本地项目记忆助手。
 
 它可以读取用户本地项目文件、Markdown、PDF、笔记和 Git 记录，帮助用户进行项目问答、引用来源、生成项目总结、日报和周报。
 

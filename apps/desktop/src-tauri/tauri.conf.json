@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "appsdesktop",
+  "productName": "Project CTO",
   "version": "0.1.0",
   "identifier": "com.mike.appsdesktop",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "appsdesktop",
+        "title": "Project CTO",
         "width": 800,
         "height": 600
       }
