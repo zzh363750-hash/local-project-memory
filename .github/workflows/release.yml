@@ -1,0 +1,122 @@
+name: Release Project CTO DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: project-cto-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-macos-arm64:
+    name: Build and publish macOS arm64 DMG
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Read version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag must use a semantic version such as v0.1.1"
+            exit 1
+          fi
+
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          VERSION="$VERSION" node <<'NODE'
+          const fs = require("node:fs");
+          const configPath = "src-tauri/tauri.conf.json";
+          const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+          config.version = process.env.VERSION;
+          fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+          NODE
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify frontend
+        run: pnpm build
+
+      - name: Verify Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build DMG
+        run: pnpm tauri build --target aarch64-apple-darwin --bundles dmg
+
+      - name: Validate DMG
+        shell: bash
+        run: |
+          EXPECTED_NAME="Project CTO_${RELEASE_VERSION}_aarch64.dmg"
+          DMG_PATH="$(find "$PWD/src-tauri/target" -type f -path "*/release/bundle/dmg/$EXPECTED_NAME" -print -quit)"
+
+          if [[ -z "$DMG_PATH" || ! -f "$DMG_PATH" ]]; then
+            echo "Expected DMG was not generated: $EXPECTED_NAME"
+            exit 1
+          fi
+
+          echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
+          echo "DMG_NAME=$EXPECTED_NAME" >> "$GITHUB_ENV"
+          shasum -a 256 "$DMG_PATH"
+          hdiutil verify "$DMG_PATH"
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            NORMALIZED_NAME="${DMG_NAME// /.}"
+            for ASSET_NAME in "$DMG_NAME" "$NORMALIZED_NAME"; do
+              if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -Fxq "$ASSET_NAME"; then
+                gh release delete-asset "$TAG" "$ASSET_NAME" --repo "$GITHUB_REPOSITORY" --yes
+              fi
+            done
+
+            gh release upload "$TAG" "$DMG_PATH" --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
+          else
+            gh release create "$TAG" "$DMG_PATH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "Project CTO $TAG" \
+              --generate-notes \
+              --latest
+          fi
