@@ -1,3 +1,5 @@
+> Turn any codebase into a technical explanation in minutes.
+
 Project CTO — AI Technical Co-founder for Any Codebase
 
 Stop spending hours trying to understand codebases you didn’t write.
@@ -52,7 +54,11 @@ So I built something to fix that.
 
 ⸻
 
- Download
+Why this matters
+
+Understanding codebases is one of the most expensive problems in software development.
+
+Download
 
 Download macOS App (DMG)
 Go to Releases:
